@@ -6,8 +6,26 @@
 
 static void err_shutdown(const char *msg) {
   int err = errno;
-  fprintf(stdout, "%d %s\n", err, msg);
+  fprintf(stdout, "[%d] %s\n", err, msg);
   abort();  
+}
+
+static void msg(const char *msg) {
+  int err = errno;
+  fprintf(stderr, "[%d] %s\n", err, msg);
+}
+
+static void do_something(int conn_fd) {
+  char rbuf[64] = {};
+  ssize_t n = read(conn_fd, rbuf, sizeof(rbuf) - 1);
+  if (n < 0) {
+    msg("read() error");
+    return;
+  }
+  printf("client says: %s\n", rbuf);
+
+  char wbuf[] = "world\n";
+  write(conn_fd, wbuf, strlen(wbuf));
 }
 
 int main()  {
@@ -38,6 +56,16 @@ int main()  {
     err_shutdown("listen() failed");
   }
 
+  while(true) {
+    struct sockaddr_in client_addr = {};
+    socklen_t addr_len = sizeof(client_addr);
+    int conn_fd = accept(fd, (struct sockaddr *) &client_addr, &addr_len);
+    if(conn_fd < 0) {
+      continue;
+    }
+    do_something(conn_fd);
+    close(conn_fd);
+  }
 
   // close the file descriptor
   close(fd);
